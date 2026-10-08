@@ -39,6 +39,10 @@ export const SettingsPage: React.FC = () => {
    * tanpa ada yang memintanya.
    */
   const [paymentRequired, setPaymentRequired] = useState(true);
+  const [showDigitalPackage, setShowDigitalPackage] = useState(true);
+  const [showPrintPackage, setShowPrintPackage] = useState(true);
+  const [showCursorLockIcon, setShowCursorLockIcon] = useState(true);
+  const [showCalibrationIcon, setShowCalibrationIcon] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -77,6 +81,11 @@ export const SettingsPage: React.FC = () => {
           setActiveProviders(paymentData.active_providers || ['DANA', 'GOPAY', 'OVO', 'SHOPEEPAY']);
           // Hanya `false` yang mematikan; nilai hilang/aneh berarti meminta bayar.
           setPaymentRequired(paymentData.payment_required !== false);
+          // Profil lama belum memiliki kedua kunci ini, jadi tetap tampilkan keduanya.
+          setShowDigitalPackage(paymentData.show_digital_package !== false);
+          setShowPrintPackage(paymentData.show_print_package !== false);
+          setShowCursorLockIcon(paymentData.show_cursor_lock_icon !== false);
+          setShowCalibrationIcon(paymentData.show_calibration_icon !== false);
         }
       }
     } catch (error: any) {
@@ -170,7 +179,11 @@ export const SettingsPage: React.FC = () => {
         verification_mode: verificationMode,
         merchant_aliases: merchantAliases.split(',').map(s => s.trim()).filter(Boolean),
         active_providers: activeProviders,
-        payment_required: paymentRequired
+        payment_required: paymentRequired,
+        show_digital_package: showDigitalPackage,
+        show_print_package: showPrintPackage,
+        show_cursor_lock_icon: showCursorLockIcon,
+        show_calibration_icon: showCalibrationIcon
       });
       toast.success('Payment configuration updated successfully');
     } catch (error: any) {
@@ -478,6 +491,78 @@ export const SettingsPage: React.FC = () => {
                     Pemasukan berhenti selama ini nonaktif. Tekan Save Changes untuk menerapkan.
                   </p>
                 )}
+              </div>
+
+              {/* Pilihan paket yang tampil di photobooth. Minimal satu paket harus tersedia. */}
+              <div className="bg-black/20 p-5 rounded-2xl border border-white/5 space-y-4">
+                <div>
+                  <p className="text-xs font-black text-foreground uppercase tracking-wider">Paket Photobooth</p>
+                  <p className="text-[10px] font-bold text-muted mt-1">
+                    Pilih paket yang ditampilkan pada layar Choose Package. Perubahan berlaku setelah disimpan.
+                  </p>
+                </div>
+                {[
+                  { id: 'toggle-package-digital', label: 'Digital Only', checked: showDigitalPackage, set: setShowDigitalPackage, other: showPrintPackage },
+                  { id: 'toggle-package-print', label: 'Print + Digital', checked: showPrintPackage, set: setShowPrintPackage, other: showDigitalPackage },
+                ].map(option => (
+                  <div key={option.id} className="flex items-center justify-between gap-4 border-t border-white/5 pt-4">
+                    <div>
+                      <p className="text-xs font-black text-foreground">{option.label}</p>
+                      <p className={`text-[10px] font-black uppercase mt-1 ${option.checked ? 'text-emerald-400' : 'text-muted'}`}>
+                        {option.checked ? 'Tampil di photobooth' : 'Disembunyikan'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-label={option.label}
+                      aria-checked={option.checked}
+                      id={option.id}
+                      disabled={option.checked && !option.other}
+                      onClick={() => option.set(value => !value)}
+                      className={`shrink-0 w-16 h-9 rounded-full border transition-all relative cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${option.checked ? 'bg-primary/90 border-primary' : 'bg-white/10 border-white/15'}`}
+                    >
+                      <span className={`absolute top-1 w-7 h-7 rounded-full bg-white transition-all ${option.checked ? 'left-8' : 'left-1'}`} />
+                    </button>
+                  </div>
+                ))}
+                {!showDigitalPackage && !showPrintPackage && (
+                  <p className="text-[10px] font-bold text-amber-300">Aktifkan minimal satu paket agar photobooth dapat digunakan.</p>
+                )}
+              </div>
+
+              {/* Saklar visibilitas dua ikon operator pada antarmuka photobooth. */}
+              <div className="bg-black/20 p-5 rounded-2xl border border-white/5 space-y-4">
+                <div>
+                  <p className="text-xs font-black text-foreground uppercase tracking-wider">Ikon Kontrol Photobooth</p>
+                  <p className="text-[10px] font-bold text-muted mt-1">
+                    Atur apakah tombol kunci kursor dan kalibrasi tampil di layar photobooth.
+                  </p>
+                </div>
+                {[
+                  { id: 'toggle-cursor-lock-icon', label: 'Ikon Lock / Kunci Kursor', checked: showCursorLockIcon, set: setShowCursorLockIcon },
+                  { id: 'toggle-calibration-icon', label: 'Ikon Kalibrasi', checked: showCalibrationIcon, set: setShowCalibrationIcon },
+                ].map(option => (
+                  <div key={option.id} className="flex items-center justify-between gap-4 border-t border-white/5 pt-4">
+                    <div>
+                      <p className="text-xs font-black text-foreground">{option.label}</p>
+                      <p className={`text-[10px] font-black uppercase mt-1 ${option.checked ? 'text-emerald-400' : 'text-muted'}`}>
+                        {option.checked ? 'Tampil di photobooth' : 'Disembunyikan'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-label={option.label}
+                      aria-checked={option.checked}
+                      id={option.id}
+                      onClick={() => option.set(value => !value)}
+                      className={`shrink-0 w-16 h-9 rounded-full border transition-all relative cursor-pointer ${option.checked ? 'bg-primary/90 border-primary' : 'bg-white/10 border-white/15'}`}
+                    >
+                      <span className={`absolute top-1 w-7 h-7 rounded-full bg-white transition-all ${option.checked ? 'left-8' : 'left-1'}`} />
+                    </button>
+                  </div>
+                ))}
               </div>
 
               <div className="flex items-center gap-3 bg-black/20 p-4 rounded-2xl border border-white/5">

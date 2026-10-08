@@ -98,6 +98,8 @@ interface FrameTemplate {
   asset_elements?: AssetElement[];
   is_active: boolean;
   price: number | null;
+  digital_price?: number | null;
+  digital_print_price?: number | null;
   usage_count: number;
   created_at: string;
 }
@@ -541,12 +543,13 @@ interface FrameEditorModalProps {
   preset: LayoutPreset;
   editingTemplate: FrameTemplate | null;
   framePrice: string;
+  framePrintPrice: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
 const FrameEditorModal: React.FC<FrameEditorModalProps> = ({
-  preset, editingTemplate, framePrice, onClose, onSaved,
+  preset, editingTemplate, framePrice, framePrintPrice, onClose, onSaved,
 }) => {
   const [editorTab, setEditorTab] = useState<'bg' | 'text' | 'asset'>('bg');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -747,7 +750,8 @@ const FrameEditorModal: React.FC<FrameEditorModalProps> = ({
   const handleSave = async () => {
     if (!state.name.trim()) { toast.error('Frame name is required.'); return; }
     const price = Number(framePrice);
-    if (!framePrice.trim() || !Number.isFinite(price) || price < 0) {
+    const printPrice = Number(framePrintPrice);
+    if (!framePrice.trim() || !framePrintPrice.trim() || !Number.isSafeInteger(price) || price <= 0 || price > 9999999999 || !Number.isSafeInteger(printPrice) || printPrice <= 0 || printPrice > 9999999999) {
       toast.error('Atur harga layout terlebih dahulu sebelum menyimpan frame.');
       return;
     }
@@ -787,6 +791,8 @@ const FrameEditorModal: React.FC<FrameEditorModalProps> = ({
           form.append('accent_color', state.accentColor);
           form.append('text_elements', JSON.stringify(state.textElements));
           form.append('price', String(price));
+          form.append('digital_price', String(price));
+          form.append('digital_print_price', String(printPrice));
           if (state.overlayAssetId) form.append('asset_id', String(state.overlayAssetId));
           await api.delete(`/admin/templates/${editingTemplate.id}`);
           await api.post('/admin/templates', form, {
@@ -808,6 +814,8 @@ const FrameEditorModal: React.FC<FrameEditorModalProps> = ({
             text_elements: state.textElements,
             is_active: state.isActive,
             price,
+            digital_price: price,
+            digital_print_price: printPrice,
             asset_id: state.overlayAssetId,
             asset_elements: frameConfig.assetElements,
           });
@@ -832,6 +840,8 @@ const FrameEditorModal: React.FC<FrameEditorModalProps> = ({
           form.append('accent_color', state.accentColor);
           form.append('text_elements', JSON.stringify(state.textElements));
           form.append('price', String(price));
+          form.append('digital_price', String(price));
+          form.append('digital_print_price', String(printPrice));
           if (state.overlayAssetId) form.append('asset_id', String(state.overlayAssetId));
           await api.post('/admin/templates', form, {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -851,6 +861,8 @@ const FrameEditorModal: React.FC<FrameEditorModalProps> = ({
             gradient_style: state.gradientStyle,
             text_elements: state.textElements,
             price,
+            digital_price: price,
+            digital_print_price: printPrice,
             asset_id: state.overlayAssetId,
             asset_elements: frameConfig.assetElements,
           });
@@ -1354,11 +1366,12 @@ const FrameEditorModal: React.FC<FrameEditorModalProps> = ({
               placeholder="e.g. Classic Dark"
               className="w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-2 text-[10px] font-bold text-foreground outline-none focus:border-primary/50 transition-all"
             />
-            <p className="text-[9px] font-black uppercase tracking-widest text-muted pt-1">Harga Layout (Rp)</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-muted pt-1">Harga Digital (Rp)</p>
             <div className="w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-2 text-[10px] font-bold text-primary">
               {framePrice ? `Rp ${Number(framePrice).toLocaleString('id-ID')}` : 'Belum diatur'}
+              <div className="mt-1">Digital &amp; Print: {framePrintPrice ? `Rp ${Number(framePrintPrice).toLocaleString('id-ID')}` : 'Belum diatur'}</div>
             </div>
-            <p className="text-[8px] text-muted leading-relaxed">Satu harga untuk semua style pada layout ini.</p>
+            <p className="text-[8px] text-muted leading-relaxed">Harga kedua paket berlaku untuk semua style pada layout ini.</p>
           </div>
         </div>
 
@@ -1528,7 +1541,8 @@ const FrameCard: React.FC<FrameCardProps> = ({ template, preset, onEdit, onDelet
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-[10px] font-black text-primary">
-            {hasCustomPrice ? `Rp ${Number(template.price).toLocaleString('id-ID')}` : 'Harga kiosk'}
+            Digital: {hasCustomPrice ? `Rp ${Number(template.digital_price ?? template.price).toLocaleString('id-ID')}` : 'Harga kiosk'}
+            <span className="block mt-1">Digital &amp; Print: {hasCustomPrice ? `Rp ${Number(template.digital_print_price ?? template.price).toLocaleString('id-ID')}` : 'Harga kiosk'}</span>
           </p>
           <span
             className="inline-block w-3 h-3 rounded-full border border-white/20 shadow-sm mt-1"
@@ -1550,6 +1564,7 @@ export const TemplateManagement: React.FC = () => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<FrameTemplate | null>(null);
   const [layoutPrice, setLayoutPrice] = useState('');
+  const [layoutPrintPrice, setLayoutPrintPrice] = useState('');
   const [isSavingLayoutPrice, setIsSavingLayoutPrice] = useState(false);
 
   const activePreset = LAYOUT_PRESETS.find(p => p.id === activeLayoutId) || LAYOUT_PRESETS[0];
@@ -1574,15 +1589,18 @@ export const TemplateManagement: React.FC = () => {
 
   useEffect(() => {
     const prices = templatesForLayout
-      .map(t => t.price)
+      .map(t => t.digital_price ?? t.price)
       .filter((price): price is number => price !== null && price !== undefined);
     setLayoutPrice(prices.length > 0 ? String(prices[0]) : '');
+    const printPrices = templatesForLayout.map(t => t.digital_print_price ?? t.price).filter(price => price !== null && price !== undefined);
+    setLayoutPrintPrice(printPrices.length > 0 ? String(printPrices[0]) : '');
   }, [activeLayoutId, templates]);
 
   const saveLayoutPrice = async () => {
     const price = Number(layoutPrice);
-    if (!layoutPrice.trim() || !Number.isFinite(price) || price < 0) {
-      toast.error('Enter a valid frame price of Rp 0 or more.');
+    const printPrice = Number(layoutPrintPrice);
+    if (!layoutPrice.trim() || !layoutPrintPrice.trim() || !Number.isSafeInteger(price) || price <= 0 || price > 9999999999 || !Number.isSafeInteger(printPrice) || printPrice <= 0 || printPrice > 9999999999) {
+      toast.error('Isi harga Digital dan Digital & Print dengan Rupiah bulat positif.');
       return;
     }
     if (templatesForLayout.length === 0) {
@@ -1594,8 +1612,8 @@ export const TemplateManagement: React.FC = () => {
 
     setIsSavingLayoutPrice(true);
     try {
-      await Promise.all(templatesForLayout.map(template => api.put(`/admin/templates/${template.id}`, { price })));
-      setTemplates(prev => prev.map(template => template.layout_id === activeLayoutId ? { ...template, price } : template));
+      await api.put(`/admin/templates/layout/${encodeURIComponent(activeLayoutId)}/prices`, { digital_price: price, digital_print_price: printPrice });
+      setTemplates(prev => prev.map(template => template.layout_id === activeLayoutId ? { ...template, price, digital_price: price, digital_print_price: printPrice } : template));
       toast.success(`Harga ${activePreset.label} berhasil diperbarui`);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to update frame price');
@@ -1660,6 +1678,8 @@ export const TemplateManagement: React.FC = () => {
         gradient_style: template.gradient_style || 'linear',
         text_elements: template.text_elements || [],
         price: layoutPrice ? Number(layoutPrice) : template.price,
+        digital_price: layoutPrice ? Number(layoutPrice) : template.digital_price ?? template.price,
+        digital_print_price: layoutPrintPrice ? Number(layoutPrintPrice) : template.digital_print_price ?? template.price,
       });
       toast.success(`Duplicated "${template.name}"`);
       fetchTemplates();
@@ -1694,6 +1714,7 @@ export const TemplateManagement: React.FC = () => {
               preset={activePreset}
               editingTemplate={editingTemplate}
               framePrice={layoutPrice}
+              framePrintPrice={layoutPrintPrice}
               onClose={() => { setEditorOpen(false); setEditingTemplate(null); }}
               onSaved={handleEditorSaved}
             />
@@ -1775,18 +1796,32 @@ export const TemplateManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 border-l border-white/10 pl-5">
+              <div className="flex flex-wrap items-center gap-2 border-l border-white/10 pl-5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted" htmlFor="layout-frame-price">
-                  Harga Layout (Rp)
+                  Harga Digital (Rp)
                 </label>
                 <input
                   id="layout-frame-price"
                   type="number"
-                  min="0"
-                  step="1000"
+                  min="1"
+                  step="1"
                   value={layoutPrice}
                   onChange={e => setLayoutPrice(e.target.value)}
                   placeholder="Contoh: 15000"
+                  disabled={isSavingLayoutPrice}
+                  className="w-28 bg-black/30 border border-white/10 rounded-lg px-2.5 py-2 text-xs font-bold text-foreground outline-none focus:border-primary/50 disabled:opacity-40"
+                />
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted" htmlFor="layout-print-price">
+                  Harga Digital &amp; Print (Rp)
+                </label>
+                <input
+                  id="layout-print-price"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={layoutPrintPrice}
+                  onChange={e => setLayoutPrintPrice(e.target.value)}
+                  placeholder="Contoh: 25000"
                   disabled={isSavingLayoutPrice}
                   className="w-28 bg-black/30 border border-white/10 rounded-lg px-2.5 py-2 text-xs font-bold text-foreground outline-none focus:border-primary/50 disabled:opacity-40"
                 />
