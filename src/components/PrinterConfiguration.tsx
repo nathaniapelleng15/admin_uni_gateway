@@ -48,6 +48,13 @@ const LABEL_PRESETS = PAPER_CATALOG;
 
 const LABEL_PRESET_VALUES = LABEL_PRESETS.map(p => p.value);
 
+/** Existing kiosk rows use these identifiers; preserve the saved size exactly. */
+const LEGACY_PAPER_SIZES = [
+  '2R', '3R', '4R', 'STRIP', '6R',
+  'POLAROID', 'STRIP 2', 'STRIP 3', 'STRIP 4',
+  'GRID', 'GRID 2X2', 'GRID 2X3', 'GRID 3X3',
+] as const;
+
 const PAPER_SIZES = [...PHOTO_PRESETS, ...THERMAL_PRESETS, ...LABEL_PRESET_VALUES] as const;
 
 /** Batas printer termal, untuk memandu pengisian ukuran kustom. */
@@ -203,7 +210,8 @@ export const PrinterConfiguration: React.FC<{ kiosk: any }> = ({ kiosk }) => {
   const availablePrinters = Array.isArray(reported?.available_printers) ? reported.available_printers : [];
   const isOnline = kiosk.status === 'online';
   const adapterSupported = config.adapter === 'disabled' || !isOnline || supportedAdapters.size === 0 || supportedAdapters.has(config.adapter);
-  const canEnable = adapterSupported && Boolean(config.printer_name);
+  const isDirectBluetooth = config.adapter === 'disabled';
+  const canEnable = isDirectBluetooth || (adapterSupported && Boolean(config.printer_name));
   const setField = (field: keyof PrinterConfig, value: any) => setConfig(current => ({ ...current, [field]: value }));
 
   // Ukuran kustom: pengguna mengetik sendiri lebar x tinggi. Draft disimpan
@@ -359,7 +367,7 @@ export const PrinterConfiguration: React.FC<{ kiosk: any }> = ({ kiosk }) => {
           </button>
           <button
             onClick={handleTestPrint}
-            disabled={!canEdit || !isOnline || !config.printing_enabled || !status.applied}
+            disabled={!canEdit || isDirectBluetooth || !isOnline || !config.printing_enabled || !status.applied}
             className="px-4 py-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {/* Status dot — hijau saat siap print, abu saat tidak bisa */}
@@ -380,11 +388,12 @@ export const PrinterConfiguration: React.FC<{ kiosk: any }> = ({ kiosk }) => {
         <div className="md:col-span-2 flex items-center justify-between p-5 rounded-2xl bg-black/20 border border-white/5">
           <div>
             <p className="text-sm font-black uppercase">Printing Enabled</p>
-            <p className="text-[10px] text-muted font-bold mt-1">Aktif hanya jika adapter dan printer terdeteksi.</p>
+            <p className="text-[10px] text-muted font-bold mt-1">Bluetooth langsung tidak memerlukan adapter printer sistem. CUPS/Windows memerlukan printer yang valid.</p>
           </div>
           <button
             type="button"
             onClick={handleToggle}
+            aria-label={config.printing_enabled ? 'Nonaktifkan cetak' : 'Aktifkan cetak'}
             disabled={!canEdit}
             className={cn(
               'w-14 h-8 rounded-full relative inline-flex items-center transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed',
@@ -402,11 +411,13 @@ export const PrinterConfiguration: React.FC<{ kiosk: any }> = ({ kiosk }) => {
           </button>
         </div>
 
-        <label className="space-y-2"><span className="label">Adapter</span><select className={fieldClass} value={config.adapter} disabled={!canEdit} onChange={e => { const value = e.target.value; setConfig(current => ({ ...current, adapter: value, printer_name: value === 'disabled' ? null : current.printer_name, printing_enabled: value === 'disabled' ? false : current.printing_enabled })); }}>
-          {ADAPTERS.map(adapter => <option key={adapter} value={adapter} disabled={adapter !== 'disabled' && supportedAdapters.size > 0 && !supportedAdapters.has(adapter)}>{adapter}{adapter !== 'disabled' && supportedAdapters.size > 0 && !supportedAdapters.has(adapter) ? ' (unsupported)' : ''}</option>)}
+        <label className="space-y-2"><span className="label">Adapter</span><select className={fieldClass} value={config.adapter} disabled={!canEdit} onChange={e => { const value = e.target.value; setConfig(current => ({ ...current, adapter: value, printer_name: value === 'disabled' ? null : current.printer_name })); }}>
+          {ADAPTERS.map(adapter => <option key={adapter} value={adapter} disabled={adapter !== 'disabled' && supportedAdapters.size > 0 && !supportedAdapters.has(adapter)}>{adapter === 'disabled' ? 'Bluetooth langsung (tanpa printer sistem)' : adapter}{adapter !== 'disabled' && supportedAdapters.size > 0 && !supportedAdapters.has(adapter) ? ' (unsupported)' : ''}</option>)}
         </select></label>
         <label className="space-y-2"><span className="label">Printer</span>
-          {isOnline && config.adapter !== 'mock' ? (
+          {isDirectBluetooth ? (
+            <p className="text-xs text-muted font-bold py-3">Printer Bluetooth dipasangkan dari aplikasi photobooth saat menekan Cetak. Test Print di Admin hanya untuk printer sistem pada agent.</p>
+          ) : isOnline && config.adapter !== 'mock' ? (
             <select className={fieldClass} value={config.printer_name || ''} disabled={!canEdit || config.adapter === 'disabled'} onChange={e => setField('printer_name', e.target.value || null)}>
               <option value="">Select detected printer</option>
               <option value="AUTO">🔍 AUTO — Deteksi printer otomatis</option>
@@ -440,6 +451,9 @@ export const PrinterConfiguration: React.FC<{ kiosk: any }> = ({ kiosk }) => {
             </optgroup>
             <optgroup label={`Termal / label (lebar maks ${THERMAL_LIMITS.maxPrintWidthMm} mm)`}>
               {THERMAL_PRESETS.map(size => <option key={size} value={size}>{size}</option>)}
+            </optgroup>
+            <optgroup label="Ukuran lama (kompatibilitas kiosk)">
+              {LEGACY_PAPER_SIZES.map(size => <option key={size} value={size}>{size}</option>)}
             </optgroup>
             <option value="__custom__">Ukuran kustom…</option>
           </select>
