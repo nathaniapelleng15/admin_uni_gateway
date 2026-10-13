@@ -42,7 +42,7 @@ export interface Margin {
  * operator mengisinya, dan preview menunjukkan akibatnya sebelum dicetak.
  * (Preset backend menang untuk kertas ini; lihat printMargin di bawah.)
  */
-export const MEASURED_FRAME: Margin = { topPx: 70, rightPx: 83, leftPx: 0, bottomPx: 154 };
+export const MEASURED_FRAME: Margin = { topPx: 71, rightPx: 83, leftPx: 0, bottomPx: 165 };
 
 export type PaperKind = 'plain' | 'framed' | 'twoColor';
 
@@ -79,7 +79,7 @@ export const PAPER_CATALOG: readonly PaperOption[] = [
     value: 'nimbotpaper-polaroid',
     label: '54 × 67 mm — SNS (bingkai)',
     widthMm: 54, heightMm: 67, kind: 'framed',
-    note: 'Kotak cetak sudah terukur: 555 × 567 px di x=0 y=70. Angka ini terkunci, tidak ikut berubah walau margin diisi lain.',
+    note: 'Kotak aman sementara: 555 × 555 px di x=0 y=71; hasil fisik perlu diverifikasi. Angka ini terkunci, tidak ikut berubah walau margin diisi lain.',
   },
   {
     value: customSize(54, 67),

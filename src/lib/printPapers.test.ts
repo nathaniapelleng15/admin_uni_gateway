@@ -44,23 +44,23 @@ test('ukuran kanvas = ukuran kertas pada 300 dpi, tidak dipangkas', () => {
 
 test('kotak cetak Polaroid SNS cocok dengan sumber photobooth dan backend', async () => {
   const { readFileSync } = await import('node:fs');
-  const geo = readFileSync('/Users/nadine/Unismiles/unismiles-photobooth/services/labelGeometry.ts', 'utf8');
-  const be = readFileSync('/Users/nadine/Unismiles/unismiles-backend/utils/paperSizes.js', 'utf8');
+  const geo = readFileSync(new URL('../../../unismiles-photobooth/services/labelGeometry.ts', import.meta.url), 'utf8');
+  const be = readFileSync(new URL('../../../unismiles-backend/utils/paperSizes.js', import.meta.url), 'utf8');
 
   // 1. Sumbernya sendiri masih memuat angka yang diukur.
-  assert.match(geo, /'nimbotpaper-polaroid': \{ topPx: 70, rightPx: 83, leftPx: 0, bottomPx: 154, fitMode: 'cover' \}/,
-    'photobooth harus masih mengukur 70/83/0/154');
-  assert.match(be, /marginTopMm: 70 \/ \(300 \/ 25\.4\)/, 'backend: atas 70 px');
-  assert.match(be, /marginBottomMm: 154 \/ \(300 \/ 25\.4\)/, 'backend: bawah 154 px');
+  assert.match(geo, /'nimbotpaper-polaroid': \{ topPx: 71, rightPx: 83, leftPx: 0, bottomPx: 165, fitMode: 'cover' \}/,
+    'photobooth harus masih mengukur 71/83/0/165');
+  assert.match(be, /marginTopMm: 71 \/ \(300 \/ 25\.4\)/, 'backend: atas 71 px');
+  assert.match(be, /marginBottomMm: 165 \/ \(300 \/ 25\.4\)/, 'backend: bawah 177 px');
 
   // 2. Preview memakai angka yang sama, dan angkanya konsisten satu sama lain.
-  assert.deepEqual(MEASURED_FRAME, { topPx: 70, rightPx: 83, leftPx: 0, bottomPx: 154 });
+  assert.deepEqual(MEASURED_FRAME, { topPx: 71, rightPx: 83, leftPx: 0, bottomPx: 165 });
   assert.match(geo, new RegExp(`B1_PRO_PRINTHEAD_PX = ${PRINTHEAD_PX}\\b`), 'kepala cetak harus 576');
   assert.match(geo, new RegExp(`LABEL_DPI = ${DPI}\\b`), 'dpi harus 300');
 
-  // 3. Hasilnya kotak 555 x 567 di x=0 y=70 — pas di kertas dan di kepala cetak.
+  // 3. Hasilnya kotak 555 x 567 di x=0 y=59 — pas di kertas dan di kepala cetak.
   const plan = previewPlan('nimbotpaper-polaroid', { topPx: 0, rightPx: 0, leftPx: 0, bottomPx: 0 });
-  assert.deepEqual(plan.box, { x: 0, y: 70, w: 555, h: 567 });
+  assert.deepEqual(plan.box, { x: 0, y: 71, w: 555, h: 555 });
   assert.strictEqual(plan.box.x + plan.box.w, 555, 'tepi kanan di bawah kepala cetak');
   assert.strictEqual(plan.box.y + plan.box.h + MEASURED_FRAME.bottomPx, plan.canvasH, 'tegak menghabiskan kertas');
   assert.strictEqual(plan.box.x + plan.box.w + MEASURED_FRAME.rightPx, plan.canvasW, 'mendatar menghabiskan kertas');
@@ -151,8 +151,8 @@ test('tinta hanya keluar DI DALAM kotak cetak — inilah WYSIWYG-nya', () => {
   assert.strictEqual(y0, plan.box.y, 'tepi atas tinta = tepi kotak');
   assert.strictEqual(x1, plan.box.x + plan.box.w - 1, 'tepi kanan tinta = tepi kotak');
   assert.strictEqual(y1, plan.box.y + plan.box.h - 1, 'tepi bawah tinta = tepi kotak');
-  // Dan cocok dengan hasil cetak nyata yang sudah diverifikasi di kertas.
-  assert.deepEqual([x0, y0, x1, y1], [0, 70, 554, 636]);
+  // Target bitmap fixture; bukan bukti cetak fisik pada kertas.
+  assert.deepEqual([x0, y0, x1, y1], [0, 71, 554, 625]);
 });
 
 test('pilihan kertas mengubah preview, dan hasilnya tetap di dalam kertas', () => {
@@ -199,7 +199,7 @@ test('sumber yang kurang piksel DITANDAI, bukan dibiarkan tampak normal', () => 
   assert.strictEqual(d.upscaled, true, '200x250 TIDAK cukup untuk kotak 555x567 — harus ditandai');
   assert.ok(d.min < DPI);
   // Foto 300 dpi PAS: 555 px untuk kotak selebar 555 px.
-  const pas = effectiveSourceDpi(box, 555, 567, 'cover');
+  const pas = effectiveSourceDpi(box, 555, 555, 'cover');
   assert.ok(Math.abs(pas.min - DPI) < 3, `pas 300 dpi: dapat ${pas.min.toFixed(0)}`);
 });
 
@@ -223,8 +223,8 @@ test('dpi kanvas tidak bergantung pada ukuran foto', () => {
 
 test('ringkasan yang ditampilkan ke operator cocok dengan kotaknya', () => {
   const s = inkSummary(previewPlan('nimbotpaper-polaroid', MEASURED_FRAME));
-  assert.strictEqual(s.boxLabel, '555 × 567 px di x=0 y=70');
-  assert.strictEqual(s.mmLabel, '46.99 × 48.01 mm');
+  assert.strictEqual(s.boxLabel, '555 × 555 px di x=0 y=71');
+  assert.strictEqual(s.mmLabel, '46.99 × 46.99 mm');
   assert.strictEqual(s.rightEdgePx, 555);
   assert.strictEqual(s.headroomPx, PRINTHEAD_PX - 555, 'sisa ruang ke kepala cetak ditampilkan apa adanya');
 });
