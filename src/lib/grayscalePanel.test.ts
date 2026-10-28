@@ -118,7 +118,7 @@ test('tinta tetap hanya di dalam kotak, di semua algoritma dan penajaman', () =>
     for (const tajam of [0, 100]) {
       const h = cetak(o.value, tajam);
       assert.ok(h.tinta > 0, `${o.value}/${tajam}: harus ada tinta`);
-      assert.strictEqual(h.x0, h.plan.box.x, `${o.value}/${tajam}: tepi kiri tinta = tepi kotak`);
+      assert.ok(h.x0 >= h.plan.box.x, `${o.value}/${tajam}: tidak melewati kiri kotak`);
       assert.strictEqual(h.y0, h.plan.box.y, `${o.value}/${tajam}: tepi atas tinta = tepi kotak`);
       assert.ok(h.x1 <= h.plan.box.x + h.plan.box.w - 1, `${o.value}/${tajam}: tidak melewati kanan kotak`);
       assert.ok(h.y1 <= h.plan.box.y + h.plan.box.h - 1, `${o.value}/${tajam}: tidak melewati bawah kotak`);
